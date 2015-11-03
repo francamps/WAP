@@ -1,12 +1,16 @@
 import csv
+from dateutil.parser import parse
+from datetime import datetime as dt
 
 MONTHS = {
 	'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
 }
 
+
 class WAParser:
 	chat = []
 	trimChat = []
+	formatted_chat = []
 
 	def __init__(self, filesrc):
 		with open(filesrc) as inputfile:
@@ -16,70 +20,69 @@ class WAParser:
 		    	self.chat.append(row)
 
 	def parseRows(self):
+		previous_msg_w_metadata = []
+		previous_has_metadata = True
 		tempRow = []
-		prev_len = 2
+		for row in self.chat:
+			if len(row) == 2 and row[0][:3] in MONTHS:
+				row.insert(1, '2015')
 
 		# Concatenate messages in different lines
 		for row in self.chat:
-			if prev_len == 2:
-				if len(row) >= 2 and row[0][0:3] in MONTHS:
-					self.trimChat.append(tempRow)
-					tempRow = row
-					prev_len = 2
-
-				#elif len(row) == 1:
-				#	prev_len = 1
-				#	tempRow = append_text_to_previous_row(row, tempRow)
-				
-				elif len(row) > 0 and row[0][0:3] not in MONTHS:
-					prev_len = 1
-					tempRow = self.append_text_to_previous_row(row, tempRow)
-					print tempRow
-			
-			elif prev_len == 1:
-				if len(row) == 1 and row[0][0:3] not in MONTHS:
-					tempRow = self.append_text_to_previous_row(row, tempRow)
-					prev_len = 1
-
-				elif len(row) >= 2:
-					self.trimChat.append(tempRow)
-					tempRow = row
-					prev_len = 2
+			try:
+				self.trimChat.append(tempRow)
+				tempRow = row
+			except ValueError:
+				for col in row:
+					tempRow[-1] = tempRow[-1] + " " + col
+			except IndexError:
+				pass
 
 	def formatProper(self):
 		# Print in a readable form
 		for row in self.trimChat[1:]:
-			#print row
 
-			# Add year for current year
-			if row[1] != ' 2014':
-				row.insert(1, '2015')
-			else:
-				row[1] = '2014'
+			try:
+				message = row[2]
 
-			# Concatenate the whole message
-			message = ''
-			for col in row[2:]:
-				message += col
-			print message
+				# Pull time out of message
+				time = self.parseTime(row[0] + " " + row[1], message.split(' - ')[0])
+				author = message.split(' - ')[1].split(': ')[0]
 
-			# Pull time out of message
-			#time = message.split(' - ')[0]
-			#author = message.split(' - ')[1].split(': ')[0]
-			# print time + " " + author
-			#text = message.split(' - ')[1].split(': ')[1]
+				self.formatted_chat.append({
+					'time': time,
+					'author': author,
+					'text': message.split(' - ')[1].split(': ')[1]
+				})
+				print time
+				print author
+				print message.split(' - ')[1].split(': ')[1]
+			except IndexError:
+				pass
+			except ValueError:
+				pass
 
 			#print row[0] + " " + time + ", " + row[1] + ": [" + author + "] " + text
 
-	def append_text_to_previous_row(self, row, tempRow):
-		tempRow[-1] = tempRow[-1] + " " + row[0]
-		#print tempRow
-		return tempRow
+	def parseTime(self, dateString, timeString):
+		return parse(dateString + " " + timeString)
+
+	def write_to_csv(self):
+		with open('./sonia/formatted_sonia.csv', 'wb') as csvfile:
+		    spamwriter = csv.writer(csvfile, delimiter=',',
+		                            quotechar='|', quoting=csv.QUOTE_MINIMAL)
+		    for msg in self.formatted_chat:
+		    	spamwriter.writerow([msg['time'], msg['author'], msg['text']])
+
+		
+
+
 
 def main():
-	whatsapp = WAParser('chat.txt')
+	whatsapp = WAParser('sonia.txt')
 	whatsapp.parseRows()
 	whatsapp.formatProper()
+	whatsapp.write_to_csv()
 
 if __name__ == "__main__":
     main()
