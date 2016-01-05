@@ -4,6 +4,13 @@ from dateutil.parser import parse
 from datetime import datetime as dt
 from datetime import timedelta, date
 
+# Filenames and paths
+# CHANGE THIS TO YOUR OWN THING OR IT WON'T WORK
+basePath = './familia'
+textFileToParse = 'Familia.txt'
+writeToJsonFile = basePath.join('/formatted_familia.json')
+writeToCSVFile = basePath.join('/formatted_familia.csv')
+
 MONTHS = {
 	'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
 }
@@ -12,11 +19,13 @@ end_date = parse('2015-10-18 00:00:00')
 
 per = 'day'
 
+# Group by hour or day
 if per == 'hour':
 	formatS = "%Y-%m-%d %H"
 elif per == 'day':
 	formatS = "%Y-%m-%d"
 
+# Format date according to grouping
 def daterange(start_date, end_date):
 	if per == 'hour':
 		for n in range(int ((end_date - start_date).total_seconds() / 3600)):
@@ -67,7 +76,7 @@ class WAParser:
 				timestring = row[1].split(' - ')[0]
 				timestring = timestring.split('.')[0] + ':' + timestring.split('.')[1]
 				time = self.parseTime(row[0], timestring)
-				
+
 				author = row[1].split(' - ')[1].split(': ')[0]
 
 				message = row[1].split(' - ')[1].split(': ')[1]
@@ -97,7 +106,7 @@ class WAParser:
 				'author': row['author'],
 				'text': row['text']
 			})
-		
+
 		self.day_buckets_list = []
 		for single_date in daterange(start_date, end_date):
 			date = single_date.strftime(formatS)
@@ -107,18 +116,18 @@ class WAParser:
 		return parse(dateString + " " + timeString.strip(), dayfirst=True)
 
 	def write_to_json(self):
-		with open('./familia/formatted_familia.json', 'w') as outfile:
+		with open(writeToJsonFile, 'w') as outfile:
 		    json.dump(self.day_buckets_list, outfile)
 
 	def write_to_csv(self):
-		with open('./familia/formatted_familia.csv', 'wb') as csvfile:
+		with open(writeToCSVFile, 'wb') as csvfile:
 		    spamwriter = csv.writer(csvfile, delimiter=',',
 		                            quotechar='|', quoting=csv.QUOTE_MINIMAL)
 		    for msg in self.formatted_chat:
 		    	spamwriter.writerow([msg['time'], msg['author'], msg['text']])
 
 def main():
-	whatsapp = WAParser('Familia.txt')
+	whatsapp = WAParser(textFileToParse)
 	whatsapp.parseRows()
 	whatsapp.formatProper()
 	whatsapp.write_to_csv()
@@ -128,4 +137,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
